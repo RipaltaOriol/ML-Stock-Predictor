@@ -119,26 +119,20 @@ def create_engineered_features(df):
 
 def create_binary_labels(df, h):
 
-    # NOTE: in here we are deleting observation which might be a problem
-
-    #labels = [1, 20, 60]
-
     g = df.groupby('ticker')
 
-    df[f'cumret_{h}'] = g['ret'].transform(lambda x: (1 + x).rolling(h).apply(lambda r: np.prod(r) - 1).shift(-h + 1))
+    df[f'cumret_{h}'] = g['ret'].transform(
+        lambda x: (1 + x.shift(-1))
+        .rolling(h, h)
+        .apply(lambda r: np.prod(r) - 1).shift(-h + 1))
 
-    df = df.dropna(subset=[f'cumret_{h}'])
+    #df = df.dropna(subset=[f'cumret_{h}'])
 
-    df[f'y_{h}'] = (df[f'cumret_{h}'] > 0).astype(int)
-
-    #for h in labels:
-        #df[f'cumret_{h}'] = g['ret'].transform(lambda x: (1 + x).rolling(h).apply(lambda r: np.prod(r) - 1).shift(-h + 1))
-    
-    #df = df.dropna(subset=[f'cumret_{h}' for h in labels])
-
-    #for h in labels:
-       # df[f'y_{h}'] = (df[f'cumret_{h}'] > 0).astype(int)
-
+    df[f'y_{h}'] = np.where(
+        df[f'cumret_{h}'].notna(),
+        (df[f'cumret_{h}'] > 0).astype(int),
+        np.nan
+    )
     return df
 
 def time_split(df, train_frac=0.70, val_frac=0.15, date_col='date'):
@@ -155,4 +149,5 @@ def time_split(df, train_frac=0.70, val_frac=0.15, date_col='date'):
     test  = df[df[date_col] > val_dt].copy()
     
     return train, val, test
+
 
