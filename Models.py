@@ -27,6 +27,11 @@ def run_logistic_regression(train, val, test, feature_cols, target_col):
     X_val = val_clean[feature_cols].values
     y_val = val_clean[target_col].values
 
+    # in logistic regression we don't need validation since there are no hyperparameters so we can join X train and X val
+    X_train_full = np.concatenate([X_train, X_val], axis=0)
+    y_train_full = np.concatenate([y_train, y_val], axis=0)
+
+
     X_test = test_clean[feature_cols].values
     y_test = test_clean[target_col].values
 
@@ -34,7 +39,7 @@ def run_logistic_regression(train, val, test, feature_cols, target_col):
     # standardize
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
-    X_val_scaled = scaler.transform(X_val)
+    #X_val_scaled = scaler.transform(X_val)
     X_test_scaled = scaler.transform(X_test)
 
 
@@ -44,16 +49,16 @@ def run_logistic_regression(train, val, test, feature_cols, target_col):
 
 
     # evalueate
-    val_pred = model.predict(X_val_scaled)
-    val_acc = accuracy_score(y_val, val_pred)
+    #val_pred = model.predict(X_val_scaled)
+    #val_acc = accuracy_score(y_val, val_pred)
 
     test_pred = model.predict(X_test_scaled)
     test_acc = accuracy_score(y_test, test_pred)
 
-    print("Validation Accuracy:", val_acc)
+    #print("Validation Accuracy:", val_acc)
     print("Test Accuracy:", test_acc)
 
-    return model, val_acc, test_acc
+    return model, test_acc#, val_acc
 
 # LSTM
 def make_lstm_sequences(df, feature_cols, target_col, seq_len):
