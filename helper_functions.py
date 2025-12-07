@@ -9,8 +9,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 
-import tensorflow as tf
-from tensorflow.keras import layers, models
+# import tensorflow as tf
+# from tensorflow.keras import layers, models
 
 def load_data():
     """
@@ -76,8 +76,6 @@ def create_fundamental_features(df):
     df["nonop_ratio"] = df["non-operating_income_loss"] / df["revenue"]
     df["abnormal_ratio"] = df["abnormal_gains_losses"] / df["revenue"]
 
-
-
     # efficiency features
     df["revenue_per_share"] = df["revenue"] / df["shares_diluted"]
     df["net_income_per_share"] = df["net_income"] / df["shares_diluted"]
@@ -136,10 +134,6 @@ def create_engineered_features(df):
 
 
 def create_binary_labels(df, h):
-    # NOTE: improve this function
-    # NOTE: in here we are deleting observation which might be a problem
-
-    #labels = [1, 20, 60]
 
     g = df.groupby('ticker')
 
@@ -148,22 +142,13 @@ def create_binary_labels(df, h):
         .rolling(h, h)
         .apply(lambda r: np.prod(r) - 1).shift(-h + 1))
 
-    # df = df.dropna(subset=[f'cumret_{h}'])
-
-    # df[f'y_{h}'] = (df[f'cumret_{h}'] > 0).astype(int)
     df[f'y_{h}'] = np.where(
         df[f'cumret_{h}'].notna(),
         (df[f'cumret_{h}'] > 0).astype(int),
         np.nan
     )
 
-    #for h in labels:
-        #df[f'cumret_{h}'] = g['ret'].transform(lambda x: (1 + x).rolling(h).apply(lambda r: np.prod(r) - 1).shift(-h + 1))
-
-    #df = df.dropna(subset=[f'cumret_{h}' for h in labels])
-
-    #for h in labels:
-       # df[f'y_{h}'] = (df[f'cumret_{h}'] > 0).astype(int)
+    df.drop(f'cumret_{h}', axis = 1, inplace = True)
 
     return df
 
