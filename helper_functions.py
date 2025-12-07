@@ -133,22 +133,23 @@ def create_engineered_features(df):
     return df
 
 
-def create_binary_labels(df, h):
+def create_binary_labels(df, horizons):
 
     g = df.groupby('ticker')
 
-    df[f'cumret_{h}'] = g['ret'].transform(
-        lambda x: (1 + x.shift(-1))
-        .rolling(h, h)
-        .apply(lambda r: np.prod(r) - 1).shift(-h + 1))
+    for h in horizons:
+        df[f'cumret_{h}'] = g['ret'].transform(
+            lambda x: (1 + x.shift(-1))
+            .rolling(h, h)
+            .apply(lambda r: np.prod(r) - 1).shift(-h + 1))
 
-    df[f'y_{h}'] = np.where(
-        df[f'cumret_{h}'].notna(),
-        (df[f'cumret_{h}'] > 0).astype(int),
-        np.nan
-    )
+        df[f'y_{h}'] = np.where(
+            df[f'cumret_{h}'].notna(),
+            (df[f'cumret_{h}'] > 0).astype(int),
+            np.nan
+        )
 
-    df.drop(f'cumret_{h}', axis = 1, inplace = True)
+        df.drop(f'cumret_{h}', axis = 1, inplace = True)
 
     return df
 
@@ -167,3 +168,7 @@ def time_split(df, train_frac=0.70, val_frac=0.15, date_col='date'):
 
     return train, val, test
 
+def prune(df, features, target):
+    cols = features + ["date", target]
+    data = df.dropna(subset = cols).copy()
+    return data
