@@ -54,17 +54,65 @@ def create_fundamental_features(df):
     df['profit_margin'] = df['net_income'] / df['revenue']
     df['revenue_growth'] = df.groupby('ticker')['revenue'].pct_change()
 
+    df["income_growth"] = df.groupby("ticker")["net_income"].pct_change()
+
+    # other ratios
+    df["gross_margin"] = df["gross_profit"] / df["revenue"]
+    df["operating_margin"] = df["operating_income_loss"] / df["revenue"]
+    df["sga_ratio"] = df["selling_general_&_administrative"] / df["revenue"]
+    df["rd_ratio"] = df["research_&_development"] / df["revenue"]
+    df["cost_ratio"] = df["cost_of_revenue"] / df["revenue"]
+    df["net_income_per_share"] = df["net_income"] / df["shares_diluted"]
+    df["tax_burden"] = df["net_income"] / df["pretax_income_loss_adj"]
+    df["nonop_ratio"] = df["non-operating_income_loss"] / df["revenue"]
+    df["abnormal_ratio"] = df["abnormal_gains_losses"] / df["revenue"]
+
+
+
+    # efficiency features
+    df["revenue_per_share"] = df["revenue"] / df["shares_diluted"]
+    df["net_income_per_share"] = df["net_income"] / df["shares_diluted"]
+
+    df["da_ratio"] = df["depreciation_&_amortization"] / df["revenue"]
+    df["interest_coverage"] = df["operating_income_loss"] / df["interest_expense_net"]
+    df["interest_burden"] = df["pretax_income_loss_adj"] / df["operating_income_loss"]
+
     return df
 
 def create_engineered_features(df):
     # engineered features:  momentum ratios, EMA crossovers, skewness, kurtosis, etc.
     g = df.groupby("ticker")
 
+    # rolling means
     df['mean_20'] = g['ret'].transform(lambda x: x.rolling(20, 10).mean())
     df['mean_60'] = g['ret'].transform(lambda x: x.rolling(60, 20).mean())
-
+    # rolling vol
     df['vol_20'] = g['ret'].transform(lambda x: x.rolling(20, 10).std())
     df['vol_60'] = g['ret'].transform(lambda x: x.rolling(60, 20).std())
+
+    # momentum
+    df['mom_5'] = g['adj_close'].transform(lambda x: x / x.shift(5) - 1)
+    df['mom_20'] = g['adj_close'].transform(lambda x: x / x.shift(20) - 1)
+    df['mom_60'] = g['adj_close'].transform(lambda x: x / x.shift(60) - 1)
+
+    #  EMA  
+    df['ema_12'] = g['adj_close'].transform(lambda x: x.ewm(span=12, adjust=False).mean())
+    df['ema_26'] = g['adj_close'].transform(lambda x: x.ewm(span=26, adjust=False).mean())
+
+    # EMA crossover
+    df['ema_cross'] = df['ema_12'] - df['ema_26']
+
+    # skewness & kurtosis 
+    df['skew_20'] = g['ret'].transform(lambda x: x.rolling(20).skew())
+    df['skew_60'] = g['ret'].transform(lambda x: x.rolling(60).skew())
+
+    df['kurt_20'] = g['ret'].transform(lambda x: x.rolling(20).kurt())
+    df['kurt_60'] = g['ret'].transform(lambda x: x.rolling(60).kurt())
+
+    # volume Z-Score
+    df['vol_z'] = g['volume'].transform(
+        lambda x: (x - x.rolling(20).mean()) / x.rolling(20).std()
+    )
 
     return df
 
