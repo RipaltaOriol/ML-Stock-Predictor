@@ -166,3 +166,4 @@ def time_split(df, train_frac=0.70, val_frac=0.15, date_col='date'):
     test  = df[df[date_col] > val_dt].copy()
 
     return train, val, test
+
