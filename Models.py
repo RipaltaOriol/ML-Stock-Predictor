@@ -1,23 +1,29 @@
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, roc_auc_score, classification_report
+from sklearn.pipeline import Pipeline
+
+import numpy as np
+from itertools import product
+
 import tensorflow as tf
 from tensorflow.keras import layers, models
-import numpy as np
-
 
 #Logistic Regression
 
 
 def run_logistic_regression(train, val, test, feature_cols, target_col):
 
+    # select features we are interested in
     required_cols = feature_cols + [target_col]
 
+    # drop NaN values in selected features
     train_clean = train.dropna(subset=required_cols).copy()
     val_clean   = val.dropna(subset=required_cols).copy()
     test_clean  = test.dropna(subset=required_cols).copy()
+    
 
-    # Check if data disappeared
+    # ensure we still have data
     if len(train_clean) == 0 or len(val_clean) == 0 or len(test_clean) == 0:
         raise ValueError("After dropping NaNs, one of the datasets became empty.")
 
@@ -27,38 +33,65 @@ def run_logistic_regression(train, val, test, feature_cols, target_col):
     X_val = val_clean[feature_cols].values
     y_val = val_clean[target_col].values
 
-    # in logistic regression we don't need validation since there are no hyperparameters so we can join X train and X val
-    X_train_full = np.concatenate([X_train, X_val], axis=0)
-    y_train_full = np.concatenate([y_train, y_val], axis=0)
-
-
     X_test = test_clean[feature_cols].values
     y_test = test_clean[target_col].values
 
+    # in logistic regression we don't need validation since there are no hyperparameters so we can join X train and X val
+    # X_train_full = np.concatenate([X_train, X_val], axis=0)
+    # y_train_full = np.concatenate([y_train, y_val], axis=0)
 
-    # standardize
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    #X_val_scaled = scaler.transform(X_val)
-    X_test_scaled = scaler.transform(X_test)
+    cvals        = [0.01, 0.1, 1.0, 10.0]
+    class_weights   = [None, "balanced"]
 
+    best_auc = -np.inf
+    best_params = None
 
-    # train
-    model = LogisticRegression(max_iter=500)
-    model.fit(X_train_scaled, y_train)
+    for cval, cw in product(cvals, class_weights):
+        clf = LogisticRegression(
+            max_iter=500,
+            C = cval,
+            class_weight = cw,
+            solver = "lbfgs"
+        )
 
+        pipeline = Pipeline([
+            ("scaler", StandardScaler()),
+            ("clf", clf),
+        ])
 
-    # evalueate
-    #val_pred = model.predict(X_val_scaled)
-    #val_acc = accuracy_score(y_val, val_pred)
+        pipeline.fit(X_train, y_train)
 
-    test_pred = model.predict(X_test_scaled)
-    test_acc = accuracy_score(y_test, test_pred)
+        y_prob = pipeline.predict_proba(X_val)[:, 1]
+        curr_auc = roc_auc_score(y_val, y_prob)
 
-    #print("Validation Accuracy:", val_acc)
-    print("Test Accuracy:", test_acc)
+        if curr_auc > best_auc:
+            best_auc = curr_auc
+            best_params = {"C": cval, "class_weight": cw}
+        
+    # merge train and validation sets to fit the final model
+    X_train_val = np.vstack([X_train, X_val])
+    y_train_val = np.concatenate([y_train, y_val])
 
-    return model, test_acc#, val_acc
+    lr = LogisticRegression(
+        max_iter=1000,
+        C=best_params["C"],
+        class_weight=best_params["class_weight"],
+    )
+
+    model = Pipeline([
+        ("scaler", StandardScaler()),
+        ("clf", lr),
+    ])
+
+    model.fit(X_train_val, y_train_val)
+
+    y_prob = model.predict_proba(X_test)[:, 1]
+    y_pred  = (y_prob >= 0.5).astype(int)
+
+    print("Test AUC:", roc_auc_score(y_test, y_prob))
+    print("Test accuracy:", accuracy_score(y_test, y_pred))
+    print(classification_report(y_test, y_pred))
+    
 
 # LSTM
 def make_lstm_sequences(df, feature_cols, target_col, seq_len):
