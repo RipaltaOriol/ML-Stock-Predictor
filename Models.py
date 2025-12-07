@@ -93,6 +93,7 @@ def run_logistic_regression(train, val, test, feature_cols, target_col):
     print(classification_report(y_test, y_pred))
     
 
+
 # LSTM
 def make_lstm_sequences(df, feature_cols, target_col, seq_len):
     X_list, y_list = [], []
