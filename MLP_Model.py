@@ -158,7 +158,7 @@ def run_optimize_eval_MLP(train, val,test, FEATURES, TARGET):
         dropout_rate=best_params["dropout_rate"],
         learning_rate=best_params["learning_rate"],
         l2_reg=best_params["l2_reg"],
-        pochs=25
+        epochs=25
     )
 
     test_clean = test.dropna(subset=FEATURES + [TARGET])
