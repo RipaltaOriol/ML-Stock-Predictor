@@ -173,3 +173,7 @@ def time_split(df, train_frac=0.70, val_frac=0.15, date_col='date'):
 
     return train, val, test
 
+def prune(df, features, target):
+    cols = features + ["date", target]
+    data = df.dropna(subset = cols).copy()
+    return data
