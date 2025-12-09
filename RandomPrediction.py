@@ -53,9 +53,10 @@ def eval_random(model, val, FEATURES, TARGET):
 
     return auc_val, y_val_proba
 
+
 def run_random_baseline(train, val, test, FEATURES, TARGET, random_state=42):
 
-    # Fit model using train (validation unused)
+    # Fit model using train
     model = run_random_prediction_model(
         train=train,
         val=val,
@@ -64,25 +65,27 @@ def run_random_baseline(train, val, test, FEATURES, TARGET, random_state=42):
         random_state=random_state
     )
 
-    # Combine train + val to mirror your RF pipeline structure
-    train_val = pd.concat([train, val], axis=0)
-    final_model = run_random_prediction_model(
-        train=train_val,
-        val=test,  # dummy
-        feature_cols=FEATURES,
-        target_col=TARGET,
-        random_state=random_state
-    )
+    # validation
+    val_clean = val.dropna(subset=FEATURES + [TARGET]).copy()
+    X_val = val_clean[FEATURES].values
+    y_val = val_clean[TARGET].values.astype(int)
 
-    # Evaluate
+    y_val_proba = model.predict_proba(X_val)[:, 1]
+    y_val_pred  = (y_val_proba >= 0.5).astype(int)
+
+    val_auc = roc_auc_score(y_val, y_val_proba)
+    val_acc = accuracy_score(y_val, y_val_pred)
+
+    # test
     test_clean = test.dropna(subset=FEATURES + [TARGET]).copy()
     X_test = test_clean[FEATURES].values
     y_test = test_clean[TARGET].values.astype(int)
 
-    y_test_proba = final_model.predict_proba(X_test)[:, 1]
-    y_test_pred = (y_test_proba >= 0.5).astype(int)
+    y_test_proba = model.predict_proba(X_test)[:, 1]
+    y_test_pred  = (y_test_proba >= 0.5).astype(int)
 
-    print("Random baseline — Test AUC:", roc_auc_score(y_test, y_test_proba))
-    print("Random baseline — Test accuracy:", accuracy_score(y_test, y_test_pred))
-    print(classification_report(y_test, y_test_pred))
+    test_auc = roc_auc_score(y_test, y_test_proba)
+    test_acc = accuracy_score(y_test, y_test_pred)
 
+    # return same metrics as the other models
+    return val_auc, val_acc, test_auc, test_acc
