@@ -34,7 +34,9 @@ def run_random_forest(
         min_samples_leaf=min_samples_leaf,
         class_weight=class_weight,
         random_state=random_state,
-        n_jobs=-1
+        n_jobs=-1,
+        ## added out of bag scoring
+        oob_score=True
     )
 
     # Train
@@ -49,9 +51,11 @@ def eval_rf(model, val, FEATURES, TARGET):
     y_val = val_clean[TARGET].values.astype(int)
 
     y_val_proba = model.predict_proba(X_val)[:, 1]
+    y_pred  = (y_val_proba >= 0.5).astype(int)
     auc_val = roc_auc_score(y_val, y_val_proba)
+    acc_val = accuracy_score(y_val,y_pred)
 
-    return auc_val, y_val_proba
+    return auc_val, acc_val, y_val_proba
 
 def rf_param_combinations(grid):
     keys = list(grid.keys())
@@ -61,13 +65,15 @@ def rf_param_combinations(grid):
 
 def run_optimize_eval_RF(train, val, test, FEATURES, TARGET):
     rf_grid = {
-    "n_estimators": [200, 400, 600],
-    "max_depth": [None, 5, 10, 20],
-    "max_features": ["sqrt", "log2", 0.2],
-    "min_samples_leaf": [1, 3, 5],
+    "n_estimators": [400],
+    "max_depth": [None, 10, 20],   # shallow vs deep comparison
+    "max_features": ["sqrt", 0.3], 
+    "min_samples_leaf": [1, 3],    # prevents overfitting
+    "class_weight": ["balanced"]   # explicit class imbalance handling
     }
 
     best_auc = -np.inf
+    best_acc = None
     best_params = None
     best_model = None
 
@@ -82,12 +88,13 @@ def run_optimize_eval_RF(train, val, test, FEATURES, TARGET):
             **params
         )
 
-        auc_val, _ = eval_rf(model, val, FEATURES, TARGET)
+        auc_val, acc_val, _ = eval_rf(model, val, FEATURES, TARGET)
 
         #print(f" -> Val AUC = {auc_val:.4f}")
 
         if auc_val > best_auc:
             best_auc = auc_val
+            best_acc = acc_val
             best_params = params
             best_model = model
 
@@ -111,9 +118,23 @@ def run_optimize_eval_RF(train, val, test, FEATURES, TARGET):
     y_test_proba = final_rf.predict_proba(X_test)[:, 1]
     y_test_pred  = (y_test_proba >= 0.5).astype(int)
 
-    print("Test AUC:", roc_auc_score(y_test, y_test_proba))
-    print("Test accuracy:", accuracy_score(y_test, y_test_pred))
+    test_auc = roc_auc_score(y_test, y_test_proba)
+    test_acc = accuracy_score(y_test, y_test_pred)
+
+
+    #print("Test AUC:", roc_auc_score(y_test, y_test_proba))
+    #print("Test accuracy:", accuracy_score(y_test, y_test_pred))
     print(classification_report(y_test, y_test_pred))
+
+    print("OOB Score:", final_rf.oob_score_)
+
+    #return best_auc, roc_auc_score(y_test, y_test_proba)
+
+    importances = pd.Series(final_rf.feature_importances_, index=FEATURES)
+    print("\nTop 10 Feature Importances:")
+    print(importances.sort_values(ascending=False).head(10))
+
+    return best_auc, best_acc, test_auc, test_acc
 
 
 
