@@ -133,6 +133,7 @@ def create_engineered_features(df):
     return df
 
 def create_engineered_plus_fundamental_features(df):
+    df = create_raw_features(df)
     df = create_engineered_features(df)
     df = create_fundamental_features(df)
     df["eps_mom_20"] = df["income_growth"] * df["mom_20"]
