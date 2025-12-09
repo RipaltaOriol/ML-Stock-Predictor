@@ -36,20 +36,19 @@ def run_logistic_regression(train, val, test, feature_cols, target_col):
     X_test = test_clean[feature_cols].values
     y_test = test_clean[target_col].values
 
-    # in logistic regression we don't need validation since there are no hyperparameters so we can join X train and X val
-    # X_train_full = np.concatenate([X_train, X_val], axis=0)
-    # y_train_full = np.concatenate([y_train, y_val], axis=0)
 
-    cvals        = [0.01, 0.1, 1.0, 10.0]
-    class_weights   = [None, "balanced"]
+    cvals = [0.01, 0.1, 1.0, 10.0]
+    class_weights = [None, "balanced"]
+    penalties = ["l2", None]
 
     best_auc = -np.inf
     best_params = None
 
-    for cval, cw in product(cvals, class_weights):
+    for cval, cw, pen in product(cvals, class_weights, penalties):
         clf = LogisticRegression(
             max_iter=500,
             C = cval,
+            penalty = pen,
             class_weight = cw,
             solver = "lbfgs"
         )
@@ -63,10 +62,12 @@ def run_logistic_regression(train, val, test, feature_cols, target_col):
 
         y_prob = pipeline.predict_proba(X_val)[:, 1]
         curr_auc = roc_auc_score(y_val, y_prob)
+        
+        curr_acc = accuracy_score(y_val, y_val)
 
         if curr_auc > best_auc:
             best_auc = curr_auc
-            best_params = {"C": cval, "class_weight": cw}
+            best_params = {"C": cval, "class_weight": cw, "penalty": pen}
         
     # merge train and validation sets to fit the final model
     X_train_val = np.vstack([X_train, X_val])
@@ -75,6 +76,7 @@ def run_logistic_regression(train, val, test, feature_cols, target_col):
     lr = LogisticRegression(
         max_iter=1000,
         C=best_params["C"],
+        penalty=best_params["penalty"],
         class_weight=best_params["class_weight"],
     )
 
@@ -88,9 +90,20 @@ def run_logistic_regression(train, val, test, feature_cols, target_col):
     y_prob = model.predict_proba(X_test)[:, 1]
     y_pred  = (y_prob >= 0.5).astype(int)
 
-    print("Test AUC:", roc_auc_score(y_test, y_prob))
-    print("Test accuracy:", accuracy_score(y_test, y_pred))
-    print(classification_report(y_test, y_pred))
+    # print("Test AUC:", roc_auc_score(y_test, y_prob))
+    # print("Test accuracy:", accuracy_score(y_test, y_pred))
+    # print(classification_report(y_test, y_pred))
+    
+    coeffs = model.named_steps["clf"].coef_[0]                 
+    intercept = model.named_steps["clf"].intercept_[0]
+    # print("Coefficients: ", coeffs)
+    
+    # test_score = model.score(X_test, y_test)
+    val_auc = best_auc
+    test_auc = roc_auc_score(y_test, y_prob)
+    
+    return val_auc, test_auc
+    
     
 
 
