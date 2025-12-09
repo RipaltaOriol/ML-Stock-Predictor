@@ -73,7 +73,7 @@ def run_optimize_eval_RF(train, val, test, FEATURES, TARGET):
     }
 
     best_auc = -np.inf
-    best_acc = None
+    best_acc =  None 
     best_params = None
     best_model = None
 
