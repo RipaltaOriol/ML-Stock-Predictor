@@ -136,22 +136,6 @@ def create_engineered_plus_fundamental_features(df):
     df = create_raw_features(df)
     df = create_engineered_features(df)
     df = create_fundamental_features(df)
-    df["eps_mom_20"] = df["income_growth"] * df["mom_20"]
-    df["eps_mom_60"] = df["income_growth"] * df["mom_60"]
-
-    # 2. Profitability per unit of volatility
-    df["profit_vol_adj_20"] = df["profit_margin"] / df["vol_20"]
-    df["profit_vol_adj_60"] = df["profit_margin"] / df["vol_60"]
-
-    # 3. Revenue growth × momentum confirmation
-    df["rev_growth_mom"] = df["revenue_growth"] * df["mom_20"]
-
-    # 4. Volume-weighted earnings signal (income growth × vol_z)
-    df["rev_signal_vol_w"] = df["income_growth"] * df["vol_z"]
-
-    # 5. Quality × EMA trend confirmation
-    df["quality_trend"] = df["gross_margin"] * df["ema_cross"]
-
     return df
 
 def create_binary_labels(df, horizons):
