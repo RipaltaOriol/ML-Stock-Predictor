@@ -107,9 +107,11 @@ def train_and_eval_mlp(train, val, FEATURES, TARGET, params):
     y_val = val_clean[TARGET].values
 
     y_val_proba = model.predict(X_val_scaled).reshape(-1)
+    y_pred = (y_val_proba >= 0.5).astype(int)
     auc_val = roc_auc_score(y_val, y_val_proba)
+    acc_val = accuracy_score(y_val, y_pred)
 
-    return auc_val, model, scaler
+    return auc_val, acc_val, model, scaler
 
 def run_optimize_eval_MLP(train, val,test, FEATURES, TARGET):
 
@@ -125,6 +127,7 @@ def run_optimize_eval_MLP(train, val,test, FEATURES, TARGET):
     }
 
     best_auc = -np.inf
+    best_acc = None
     best_params = None
     best_model = None
     best_scaler = None
@@ -132,7 +135,7 @@ def run_optimize_eval_MLP(train, val,test, FEATURES, TARGET):
     for params in get_param_combinations(hyper_grid):
         #print(f"Training with params: {params}")
 
-        auc_val, model, scaler = train_and_eval_mlp(
+        auc_val, acc_val, model, scaler = train_and_eval_mlp(
             train, val, FEATURES, TARGET, params
         )
 
@@ -140,6 +143,7 @@ def run_optimize_eval_MLP(train, val,test, FEATURES, TARGET):
 
         if auc_val > best_auc:
             best_auc = auc_val
+            best_acc = acc_val
             best_params = params
             best_model = model
             best_scaler = scaler
@@ -168,9 +172,14 @@ def run_optimize_eval_MLP(train, val,test, FEATURES, TARGET):
     y_test_proba = model_final.predict(X_test_scaled).reshape(-1)
     y_test_pred  = (y_test_proba >= 0.5).astype(int)
 
+    test_auc = roc_auc_score(y_test,y_test_proba)
+    test_acc = accuracy_score(y_test, y_test_pred)
+
     print("Test AUC:", roc_auc_score(y_test, y_test_proba))
     print("Test accuracy:", accuracy_score(y_test, y_test_pred))
     print(classification_report(y_test, y_test_pred))
+
+    return best_auc, best_acc, test_auc, test_acc
 
 
 
