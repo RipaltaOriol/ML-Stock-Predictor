@@ -42,6 +42,7 @@ def run_logistic_regression(train, val, test, feature_cols, target_col):
     penalties = ["l2", None]
 
     best_auc = -np.inf
+    best_acc = None
     best_params = None
 
     for cval, cw, pen in product(cvals, class_weights, penalties):
@@ -62,11 +63,14 @@ def run_logistic_regression(train, val, test, feature_cols, target_col):
 
         y_prob = pipeline.predict_proba(X_val)[:, 1]
         curr_auc = roc_auc_score(y_val, y_prob)
-        
-        curr_acc = accuracy_score(y_val, y_val)
+
+        # Convert probabilities to class predictions
+        y_pred = (y_prob >= 0.5).astype(int)
+        curr_acc = accuracy_score(y_val, y_pred)
 
         if curr_auc > best_auc:
             best_auc = curr_auc
+            best_acc = curr_acc
             best_params = {"C": cval, "class_weight": cw, "penalty": pen}
         
     # merge train and validation sets to fit the final model
@@ -101,82 +105,9 @@ def run_logistic_regression(train, val, test, feature_cols, target_col):
     # test_score = model.score(X_test, y_test)
     val_auc = best_auc
     test_auc = roc_auc_score(y_test, y_prob)
+    test_acc = accuracy_score(y_test, y_pred)
     
-    return val_auc, test_auc
+    #return val_auc, test_auc
+    return best_auc, best_acc, test_auc, test_acc
     
     
-
-
-# LSTM
-def make_lstm_sequences(df, feature_cols, target_col, seq_len):
-    X_list, y_list = [], []
-
-    # Drop rows with NaNs in features or target
-    df = df.dropna(subset=feature_cols + [target_col]).copy()
-
-    for ticker, tdf in df.groupby("ticker"):
-        tdf = tdf.sort_values("date")
-
-        feature_mat = tdf[feature_cols].values
-        labels = tdf[target_col].values
-
-        # Slide sequence window
-        for i in range(seq_len, len(tdf)):
-            X_list.append(feature_mat[i-seq_len:i])
-            y_list.append(labels[i])
-
-    return np.array(X_list), np.array(y_list)
-
-
-def run_lstm(train, val, test, feature_cols, target_col, seq_len=30):
-    
-    # scale
-    scaler = StandardScaler()
-
-    train_scaled = train.copy()
-    val_scaled   = val.copy()
-    test_scaled  = test.copy()
-
-    train_scaled[feature_cols] = scaler.fit_transform(train[feature_cols])
-    val_scaled[feature_cols]   = scaler.transform(val[feature_cols])
-    test_scaled[feature_cols]  = scaler.transform(test[feature_cols])
-
-    # sequence
-    X_train, y_train = make_lstm_sequences(train_scaled, feature_cols, target_col, seq_len)
-    X_val, y_val     = make_lstm_sequences(val_scaled, feature_cols, target_col, seq_len)
-    X_test, y_test   = make_lstm_sequences(test_scaled, feature_cols, target_col, seq_len)
-
-    print("Shapes:")
-    print("Train:", X_train.shape, y_train.shape)
-    print("Val:  ", X_val.shape, y_val.shape)
-    print("Test: ", X_test.shape, y_test.shape)
-
-    #model
-    model = models.Sequential([
-        layers.Input(shape=(seq_len, len(feature_cols))),
-        layers.LSTM(64, return_sequences=False),
-        layers.Dropout(0.2),
-        layers.Dense(32, activation='relu'),
-        layers.Dense(1, activation='sigmoid')
-    ])
-
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
-        loss='binary_crossentropy',
-        metrics=['accuracy']
-    )
-
-    #train
-    history = model.fit(
-        X_train, y_train,
-        validation_data=(X_val, y_val),
-        epochs=20,
-        batch_size=128,
-        shuffle=False   # IMPORTANT for time series
-    )
-
-    #evaluate
-    test_loss, test_acc = model.evaluate(X_test, y_test)
-    print("Test accuracy:", test_acc)
-
-    return model, history, test_acc
