@@ -108,6 +108,6 @@ def run_logistic_regression(train, val, test, feature_cols, target_col):
     test_acc = accuracy_score(y_test, y_pred)
     
     #return val_auc, test_auc
-    return best_auc, best_acc, test_auc, test_acc
+    return best_auc, best_acc, test_auc, test_acc, best_params
     
     

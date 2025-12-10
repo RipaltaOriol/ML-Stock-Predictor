@@ -134,7 +134,7 @@ def run_optimize_eval_RF(train, val, test, FEATURES, TARGET):
     print("\nTop 10 Feature Importances:")
     print(importances.sort_values(ascending=False).head(10))
 
-    return best_auc, best_acc, test_auc, test_acc
+    return best_auc, best_acc, test_auc, test_acc, best_params
 
 
 

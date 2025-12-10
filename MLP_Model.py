@@ -179,7 +179,7 @@ def run_optimize_eval_MLP(train, val,test, FEATURES, TARGET):
     print("Test accuracy:", accuracy_score(y_test, y_test_pred))
     print(classification_report(y_test, y_test_pred))
 
-    return best_auc, best_acc, test_auc, test_acc
+    return best_auc, best_acc, test_auc, test_acc, best_params
 
 
 
